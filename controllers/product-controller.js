@@ -1,6 +1,14 @@
 const createError = require("../utils/createError");
 const prisma = require("../config/prisma");
+const cloudinary = require('cloudinary').v2
 
+
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
 
 exports.create = async (req, res, next) => {
   try {
@@ -54,7 +62,7 @@ exports.read = async (req, res, next) => {
     const { id } = req.params;
     const products = await prisma.product.findFirst({
       where: {
-        id: +id,
+        id: Number(id)
       },
       include: {
         category: true,
@@ -111,7 +119,32 @@ exports.remove = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // delete photo
+    // Step1 ค้นหาสินค้า include image
+    const product = await prisma.product.findFirst({
+      where: { id: +id },
+      include : { images: true}
+    })
+
+    if(!product){
+      return createError(400,"Product not found")
+    }
+    // console.log(product)
+
+    // step2 Promise ลบรูปใน cloud
+    const deletedImage = product.images
+    .map((image)=>
+    new Promise((resolve,reject)=>{
+      cloudinary.uploader.destroy(image.public_id,(error,result)=>{
+        if(error) reject(error)
+          else resolve(result)
+      })
+    })
+  )
+
+  await Promise.all(deletedImage)
+
+  
+    // delete photo 
     await prisma.product.delete({
       where: {
         id: +id,
@@ -221,6 +254,35 @@ exports.searchFilters = async (req, res, next) => {
       await hdlPrice(req, res, price, next);
     }
     // res.send('hello searchFilter pro')
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+exports.createImages = async (req, res, next) => {
+  try {
+    const result = await cloudinary.uploader.upload(req.body.image, {
+      public_id: `Camera-${Date.now()}`,
+      resource_type: 'auto',
+      folder: 'CameraStore'
+    });
+
+    res.send(result);
+  } catch (err) {
+    next(err)
+  }
+};
+
+
+exports.removeImage = async (req, res, next) => {
+  try {
+    
+    const { public_id } = req.body
+    // console.log(public_id)
+    cloudinary.uploader.destroy(public_id,(result)=>{
+      res.send('Remove Image Success')
+    })
   } catch (err) {
     next(err);
   }
