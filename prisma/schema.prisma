@@ -9,7 +9,7 @@ datasource db {
 
 model User {
   id        Int      @id @default(autoincrement())
-  email     String   @unique  
+  email     String   @unique
   password  String?
   name      String?
   picture   String?
@@ -63,9 +63,12 @@ model Category {
   id        Int       @id @default(autoincrement())
   name      String
   products  Product[]
+  imageurl  String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
+
+
 
 model Cart {
   id          Int             @id @default(autoincrement())
@@ -88,13 +91,13 @@ model ProductOnCart {
 }
 
 model Image {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   asset_id   String
   public_id  String
   url        String
   secure_url String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId  Int
 }
