@@ -12,18 +12,20 @@ cloudinary.config({
 
 exports.create = async (req, res, next) => {
   try {
-    const { title, description, price, quantity, images, categoryId } =
-      req.body;
-    // console.log(title, description,price,quantity,images)
+    const { title, description, price, quantity, images, categoryId } = req.body; 
+    // เพื่อนำไปสร้าง product ใหม่
+
     const product = await prisma.product.create({
       data: {
         title: title,
-        description: description,
-        price: parseFloat(price),
-        quantity: parseInt(quantity),
-        categoryId: parseInt(categoryId),
+        description: description, 
+        price: parseFloat(price), // แปลง price จาก string เป็น float แล้วตั้งค่า price
+        quantity: parseInt(quantity), // แปลง quantity จาก string เป็น integer แล้วตั้งค่า quantity
+        categoryId: parseInt(categoryId), // แปลง categoryId จาก string เป็น integer แล้วตั้งค่า categoryId
+
         images: {
           create: images.map((item) => ({
+            // ดึงข้อมูลจากภาพแต่ละภาพที่ได้จาก body แล้วสร้างข้อมูล image ในฐานข้อมูล
             asset_id: item.asset_id,
             public_id: item.public_id,
             url: item.url,
@@ -33,73 +35,75 @@ exports.create = async (req, res, next) => {
       },
     });
 
-    res.send(product);
+    res.send(product); 
   } catch (err) {
     next(err);
   }
 };
 
+
 exports.list = async (req, res, next) => {
   try {
-    const { count } = req.params;
+    const { count } = req.params; // ดึงค่า count จาก URL parameters
     const products = await prisma.product.findMany({
-      take: parseInt(count),
-      orderBy: { createdAt: "desc" },
+      take: parseInt(count), // จำกัดจำนวนรายการสินค้าที่จะดึงตามค่าของ count
+      orderBy: { createdAt: "desc" }, // จัดเรียงรายการสินค้าตามวันที่สร้างจากใหม่ไปเก่า
       include: {
-        category: true,
-        images: true,
+        category: true, // ดึงข้อมูลหมวดหมู่
+        images: true,   // ดึงข้อมูลรูปภาพ
       },
     });
 
-    res.send(products);
+    res.send(products); 
   } catch (err) {
-    next(err);
+    next(err); 
   }
 };
 
 exports.read = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // ดึงค่า id จาก URL parameters
     const products = await prisma.product.findFirst({
       where: {
-        id: Number(id)
+        id: Number(id) // ค้นหาสินค้าตาม id ที่ถูกส่งมา
       },
       include: {
-        category: true,
-        images: true,
+        category: true, 
+        images: true,   
       },
     });
 
-    res.send(products);
+    res.send(products); 
   } catch (err) {
-    next(err);
+    next(err); 
   }
 };
 
 exports.update = async (req, res, next) => {
   try {
-    const { title, description, price, quantity, images, categoryId } =
-      req.body;
-    // console.log(title, description,price,quantity,images)
+    const { title, description, price, quantity, images, categoryId } = req.body; 
+    // ดึงข้อมูลที่ถูกส่งมาเพื่อนำไปอัปเดต product
 
     await prisma.image.deleteMany({
       where: {
-        productId: +req.params.id,
+        productId: +req.params.id, // ลบข้อมูลรูปภาพทั้งหมดที่เชื่อมโยงกับสินค้าที่จะถูกอัปเดต
       },
     });
 
     const product = await prisma.product.update({
       where: {
-        id: +req.params.id,
+        id: +req.params.id, // ระบุสินค้าที่จะอัปเดตตาม id ที่ส่งมาใน URL
       },
       data: {
-        title: title,
-        description: description,
-        price: parseFloat(price),
-        quantity: parseInt(quantity),
-        categoryId: parseInt(categoryId),
+        title: title, 
+        description: description, 
+        price: parseFloat(price), 
+        quantity: parseInt(quantity), 
+        categoryId: parseInt(categoryId), 
+
         images: {
           create: images.map((item) => ({
+            // สร้างข้อมูลรูปภาพใหม่ที่เชื่อมโยงกับสินค้านี้
             asset_id: item.asset_id,
             public_id: item.public_id,
             url: item.url,
@@ -109,110 +113,115 @@ exports.update = async (req, res, next) => {
       },
     });
 
-    res.send(product);
+    res.send(product); 
   } catch (err) {
-    next(err);
+    next(err); 
   }
 };
 
 exports.remove = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; 
 
-    // Step1 ค้นหาสินค้า include image
+    // Step1 ค้นหาสินค้าและดึงข้อมูลรูปภาพที่เชื่อมโยงกับสินค้านั้น
     const product = await prisma.product.findFirst({
-      where: { id: +id },
-      include : { images: true}
+      where: { id: +id }, // ค้นหาสินค้าตาม id
+      include: { images: true } // ดึงข้อมูลรูปภาพของสินค้ามาด้วย
     })
 
     if(!product){
-      return createError(400,"Product not found")
+      return createError(400,"Product not found") 
     }
-    // console.log(product)
 
-    // step2 Promise ลบรูปใน cloud
-    const deletedImage = product.images
-    .map((image)=>
-    new Promise((resolve,reject)=>{
-      cloudinary.uploader.destroy(image.public_id,(error,result)=>{
-        if(error) reject(error)
-          else resolve(result)
+    // Step2 ลบรูปภาพใน Cloudinary
+    const deletedImage = product.images.map((image) =>  //ลูป ผ่านรายการรูปภาพที่เชื่อมโยงกับสินค้า (ข้อมูลรูปภาพอยู่ใน product.images).
+      new Promise((resolve,reject) => {
+        cloudinary.uploader.destroy(image.public_id, (error,result) => {  //ใช้ฟั่งชั่นของclound เพื่อลบแต่ละภาพ เมื่อทำงานสำเร็จลง sololve err ลง reject
+          if(error) reject(error)
+          else resolve(result) // ลบรูปภาพจาก Cloudinary ตาม public_id
+        })
       })
-    })
-  )
+    )
 
-  await Promise.all(deletedImage)
+    await Promise.all(deletedImage); // รอให้รูปภาพทั้งหมดถูกลบออกจาก Cloudinary
 
-  
-    // delete photo 
+    // Step3 ลบข้อมูลสินค้าในฐานข้อมูล
     await prisma.product.delete({
       where: {
-        id: +id,
+        id: +id, // ลบสินค้าจากฐานข้อมูลตาม id
       },
     });
 
-    res.send("Deleted Success");
+    res.send("Deleted Success"); 
   } catch (err) {
-    next(err);
+    next(err); 
   }
 };
 
+
 exports.listby = async (req, res, next) => {
   try {
-    const { sort, order, limit } = req.body;
-    console.log(sort, order, limit);
+    const { sort, order, limit } = req.body; // ดึงข้อมูลการจัดเรียง (sort) และจำนวน (limit) จาก body
     const products = await prisma.product.findMany({
-      take: limit,
-      orderBy: { [sort]: order },
+      take: limit, // จำกัดจำนวนสินค้าตาม limit
+      orderBy: { [sort]: order }, // จัดเรียงสินค้าโดยอิงจาก sort และ order (asc/desc)
       include: {
-        category: true,
+        category: true, // ดึงข้อมูลหมวดหมู่ของสินค้ามาด้วย
       },
     });
 
-    res.send(products);
+    res.send(products); 
   } catch (err) {
-    next(err);
+    next(err); 
   }
 };
 
 const hdlQuery = async (req, res, query, next) => {
   try {
+    // ค้นหาโดย title ของผลิตภัณฑ์นั้นมีคำที่ตรงกับ query
     const products = await prisma.product.findMany({
       where: {
         title: {
-          contains: query,
+          contains: query, // ค้นหาผลิตภัณฑ์ที่ชื่อมีคำที่ตรงกับ query
         },
       },
       include: {
-        category: true,
-        images: true,
+        category: true, // ดึงข้อมูล
+        images: true,   
       },
     });
-    res.send(products);
+    res.send(products); 
   } catch (err) {
-    next(err);
+    next(err); 
   }
 };
 
+
+
 const hdlPrice = async (req, res, priceRange, next) => {
   try {
+    // ค้นหาผลิตภัณฑ์ที่มีราคาตามช่วงราคา
     const products = await prisma.product.findMany({
       where: {
         price: {
-          gte: priceRange[0],
-          lte: priceRange[1],
+          gte: priceRange[0], // ราคา >= ราคาต่ำสุด
+          lte: priceRange[1], // ราคา <= ราคาสูงสุด
         },
       },
       include: {
-        category: true,
-        images: true,
+        category: true, 
+        images: true,   
+      },
+      orderBy: {
+        price: 'asc', // เรียงลำดับราคาจากน้อยไปมาก
       },
     });
-    res.send(products);
+    res.send(products); 
   } catch (err) {
-    next(err);
+    next(err); 
   }
 };
+
 
 const hdlCategory = async (req, res, categoryId, next) => {
   try {
@@ -232,6 +241,7 @@ const hdlCategory = async (req, res, categoryId, next) => {
     next(err);
   }
 };
+
 
 exports.searchFilters = async (req, res, next) => {
   try {
@@ -260,29 +270,34 @@ exports.searchFilters = async (req, res, next) => {
 };
 
 
+
 exports.createImages = async (req, res, next) => {
   try {
+    
     const result = await cloudinary.uploader.upload(req.body.image, {
+      // สร้างชื่อ public_id สำหรับรูปภาพโดยใช้เวลาเป็นฐาน
       public_id: `Camera-${Date.now()}`,
       resource_type: 'auto',
       folder: 'CameraStore'
     });
 
+ 
     res.send(result);
   } catch (err) {
     next(err)
   }
 };
 
-
 exports.removeImage = async (req, res, next) => {
   try {
-    
-    const { public_id } = req.body
-    // console.log(public_id)
-    cloudinary.uploader.destroy(public_id,(result)=>{
-      res.send('Remove Image Success')
-    })
+    // ดึง public_id ของรูปภาพที่ต้องการลบจาก req.body
+    const { public_id } = req.body;
+
+    // ลบรูปภาพจาก Cloudinary โดยใช้ public_id
+    cloudinary.uploader.destroy(public_id, (result) => {
+
+      res.send('Remove Image Success');
+    });
   } catch (err) {
     next(err);
   }

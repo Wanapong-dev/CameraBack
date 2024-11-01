@@ -4,7 +4,7 @@ const userController = require('../controllers/user-controller')
 const { authCheck, adminCheck } = require('../middlewares/authCheck')
 
 
-router.get('/users',authCheck,adminCheck,userController.listUsers)
+router.get('/users',authCheck,adminCheck,userController.listUsers) 
 router.post('/change-status',authCheck,adminCheck,userController.changeStatus)
 router.post('/change-role',authCheck,adminCheck,userController.changeRole)
 

@@ -5,7 +5,7 @@ const { authCheck,adminCheck } = require('../middlewares/authCheck')
 const upload = require('../middlewares/upload')
 
 
-router.post('/category',authCheck,adminCheck,upload.single('file'),categoryController.create)
+router.post('/category',authCheck,adminCheck,upload.single('file'),categoryController.create) 
 router.get('/category',categoryController.list)
 router.delete('/category/:id',authCheck,adminCheck,categoryController.remove)
 
